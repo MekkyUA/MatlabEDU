@@ -191,9 +191,21 @@ classdef Trainer < matlab.System
                         imgSegments{end+1} = img(x1:x2, y1:y2);
                         y1 = y2+1;
                         y2 = y2+blockY;
+                        
+                        if y1 <= imgY && y2 > imgY
+                            y1 = y1-(y2-imgY);
+                            y2 = imgY;
+                        end
+                        
                     end
                     x1 = x2+1;
-                    x2 = x2+blockY;
+                    x2 = x2+blockX;
+                    
+                    if x1 <= imgX && x2 > imgX
+                        x1 = x1-(x2-imgX);
+                        x2 = imgX;
+                    end
+                    
                 end
             else
                 imgSegments{1} = img;
