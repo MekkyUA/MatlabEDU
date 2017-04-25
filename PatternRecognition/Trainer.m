@@ -8,11 +8,11 @@ classdef Trainer < matlab.System
     end
 
     methods(Access = public)
-        function enhancedBinaryImg = imenhance(self, rawImgPath, noiseThreshold)
+        function enhancedBinaryImg = imenhance(~, rawImgPath, noiseThreshold)
             % image read
             img = imread(rawImgPath);
             % resize to fixed w & h
-            img = imresize(img, self.imgSize);
+            %img = imresize(img, self.imgSize);
             % Convert to Gray image
             if size(img,3)==3 %RGB image
                 img = rgb2gray(img);
@@ -24,12 +24,13 @@ classdef Trainer < matlab.System
             enhancedBinaryImg = bwareaopen(img, noiseThreshold);
         end
         
-        function imgObjects = extractObjects(self, enhancedBinaryImg)  
+        function [imgObjects, rectPositions] = extractObjects(self, enhancedBinaryImg)  
             %Segment all object in the image based on 8 connectivity
             objects = bwconncomp(enhancedBinaryImg,8);
             %foreach extracted object
             %initialize imgObjects as cell array
             imgObjects = cell(objects.NumObjects, 1);
+            rectPositions = cell(objects.NumObjects, 1);
             for obj=1:objects.NumObjects
                 %get colored pixels indexes column
                 coloredPixelsIdx = objects.PixelIdxList(1,obj);
@@ -48,6 +49,7 @@ classdef Trainer < matlab.System
                 rect = s.BoundingBox;
                 %crop & resize the extracted object then add to imgObjects array
                 imgObjects{obj} = imresize(imcrop(objImg, rect), self.objSize);
+                rectPositions{obj} = rect;
                 
                 %debug
                 %imshow(imgObjects{obj});
@@ -104,15 +106,17 @@ classdef Trainer < matlab.System
             end
         end
         
-        function [dataSet, dataSetClasses] = Train(self, dataClasses, imagePaths2D, noiseThreshold, blockSize)
+        function [dataSet, dataSetClasses, rectPositions] = Train(self, dataClasses, imagePaths2D, noiseThreshold, blockSize)
             dataSetClasses = cell(0,1);
+            rectPositions = cell(0,1);
             dataSet_Initialized = 0;
             for classIdx = 1 : numel(dataClasses)
                 classImgsPaths = imagePaths2D{classIdx};
                 for classImgPathIdx = 1 : numel(classImgsPaths)
                     curImgPath = classImgsPaths{classImgPathIdx};
                     enhancedBinImg = self.imenhance(curImgPath, noiseThreshold);
-                    imgObjs = self.extractObjects(enhancedBinImg);
+                    [imgObjs, imgObjsPositions] = self.extractObjects(enhancedBinImg);
+                    rectPositions = vertcat(rectPositions, imgObjsPositions);
                     for objIdx = 1 : numel(imgObjs)
                         curObj = imgObjs{objIdx};
                         curObjSegms = self.segment(curObj, blockSize);
@@ -212,15 +216,17 @@ classdef Trainer < matlab.System
             end
         end
         
-        function [dataSet, dataSetClasses] = TrainHOG(self, dataClasses, imagePaths2D, noiseThreshold, CellSize)
+        function [dataSet, dataSetClasses, rectPositions] = TrainHOG(self, dataClasses, imagePaths2D, noiseThreshold, CellSize)
             dataSetClasses = cell(0,1);
+            rectPositions = cell(0,1);
             dataSet_Initialized = 0;
             for classIdx = 1 : numel(dataClasses)
                 classImgsPaths = imagePaths2D{classIdx};
                 for classImgPathIdx = 1 : numel(classImgsPaths)
                     curImgPath = classImgsPaths{classImgPathIdx};
                     enhancedBinImg = self.imenhance(curImgPath, noiseThreshold);
-                    imgObjs = self.extractObjects(enhancedBinImg);
+                    [imgObjs, imgObjsPositions] = self.extractObjects(enhancedBinImg);
+                    rectPositions = vertcat(rectPositions, imgObjsPositions);
                     for objIdx = 1 : numel(imgObjs)
                         curObj = imgObjs{objIdx};
                         hogFeatures = extractHOGFeatures(curObj,'CellSize', CellSize);

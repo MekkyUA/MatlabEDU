@@ -7,12 +7,12 @@ classdef Classifier
     
     methods(Access = public)
 
-        function testObjects = getImgReady(self, ImgPath, noiseThreshold, blockSize)
-            [testObjects, ~] = self.tr.Train({'Unknown'}, {{ImgPath}}, noiseThreshold, blockSize);
+        function [testObjects, testObjectsPositions] = getImgReady(self, ImgPath, noiseThreshold, blockSize)
+            [testObjects, ~, testObjectsPositions] = self.tr.Train({'Unknown'}, {{ImgPath}}, noiseThreshold, blockSize);
         end
         
-        function testObjects = getImgReadyHOG(self, ImgPath, noiseThreshold, CellSize)
-            [testObjects, ~] = self.tr.TrainHOG({'Unknown'}, {{ImgPath}}, noiseThreshold, CellSize);
+        function [testObjects, testObjectsPositions] = getImgReadyHOG(self, ImgPath, noiseThreshold, CellSize)
+            [testObjects, ~, testObjectsPositions] = self.tr.TrainHOG({'Unknown'}, {{ImgPath}}, noiseThreshold, CellSize);
         end
         
         % k = 0 (means NN) , weights = 0 (means no weights)
