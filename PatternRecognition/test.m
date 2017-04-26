@@ -5,21 +5,21 @@ tr = Trainer;
 ir = ImageReader;
 cl = Classifier;
 
-%load('trainHOG_8x8_Cells.mat');
+load('trainHOG_8x8_Cells.mat');
 %load('train_4x4_Blocks.mat');
 %load('train_8x8_Blocks.mat');
 
 %train
-
+%{
 [dataClasses, imagePaths2D] = ir.read('dataset');
 tic; %start stopwatch
 %[trainedSetHOG, trainedSetClassesHOG] = tr.TrainHOG(dataClasses, imagePaths2D, 120*120, [8 8]);
 [trainedSetHOG, trainedSetClassesHOG] = tr.TrainAsync(dataClasses, imagePaths2D, 120*120, [8 8], 1); % 1 = HOG
 %[trainedSet, trainedSetClasses] = tr.Train(dataClasses, imagePaths2D, 120*120, [4 4]);
-%[trainedSetHOG, trainedSetClassesHOG] = tr.TrainAsync(dataClasses, imagePaths2D, 120*120, [8 8], 0);
+%[trainedSet, trainedSetClasses] = tr.TrainAsync(dataClasses, imagePaths2D, 120*120, [4 4], 0);
 elapsedTrainingTimeMinutes = toc/60;
 sound(y,Fs);
-
+%}
 
 %test
 %{
@@ -53,7 +53,7 @@ tic; %start stopwatch
 [testObjects, testObjectsPos] = cl.getImgReadyHOG('testImgs/test4.jpg', 10, [8 8]);
 classesTypes = cl.weightedKNNAsync(trainedSetHOG, trainedSetClassesHOG, testObjects, 3, 0);
 
-%[testObjects, testObjectsPos] = cl.getImgReady('testImgs/test4.jpg', 10, [8 8]);
+%[testObjects, testObjectsPos] = cl.getImgReady('testImgs/test4.jpg', 10, [4 4]);
 %classesTypes = cl.weightedKNNAsync(trainedSet, trainedSetClasses, testObjects, 3, 0);
 
 I = imread('testImgs/test4.jpg');
@@ -63,3 +63,4 @@ for i=1:numel(testObjects(:,1))
 end
 imshow(imresize(I, 1));
 elapsedClassificationTime = toc;
+%}
