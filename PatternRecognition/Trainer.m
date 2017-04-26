@@ -5,10 +5,12 @@ classdef Trainer < matlab.System
     properties(Constant)
         imgSize = [320,320];
         objSize = [40,40];
+        defBlockSize = [8 8];
+        defNoiseThreshold = 120*120;
     end
 
     methods(Access = public)
-        function enhancedBinaryImg = imenhance(~, rawImgPath, noiseThreshold)
+        function enhancedBinaryImg = imenhance(self, rawImgPath, noiseThreshold)
             % image read
             img = imread(rawImgPath);
             % resize to fixed w & h
@@ -21,6 +23,9 @@ classdef Trainer < matlab.System
             img = imbinarize(img);
             img = ~img; %negative
             % Remove all object containing fewer than noiseThreshold pixels
+            if nargin < 3
+                noiseThreshold = self.defNoiseThreshold;
+            end
             enhancedBinaryImg = bwareaopen(img, noiseThreshold);
         end
         
@@ -114,12 +119,20 @@ classdef Trainer < matlab.System
                 classImgsPaths = imagePaths2D{classIdx};
                 for classImgPathIdx = 1 : numel(classImgsPaths)
                     curImgPath = classImgsPaths{classImgPathIdx};
-                    enhancedBinImg = self.imenhance(curImgPath, noiseThreshold);
+                    if nargin < 4
+                        enhancedBinImg = self.imenhance(curImgPath);
+                    else
+                        enhancedBinImg = self.imenhance(curImgPath, noiseThreshold);
+                    end
                     [imgObjs, imgObjsPositions] = self.extractObjects(enhancedBinImg);
                     rectPositions = vertcat(rectPositions, imgObjsPositions);
                     for objIdx = 1 : numel(imgObjs)
                         curObj = imgObjs{objIdx};
-                        curObjSegms = self.segment(curObj, blockSize);
+                        if nargin < 5
+                            curObjSegms = self.segment(curObj);
+                        else
+                            curObjSegms = self.segment(curObj, blockSize);
+                        end                   
                         numOfFeatures = 11;
                         if ~dataSet_Initialized %initialize for first time only
                             dataSet = zeros(0, numel(curObjSegms)*numOfFeatures);
@@ -182,8 +195,11 @@ classdef Trainer < matlab.System
             end
         end
         
-        function imgSegments = segment(~, img, blockSize)
+        function imgSegments = segment(self, img, blockSize)
             [imgX,imgY] = size(img);
+            if nargin < 3
+                blockSize = self.defBlockSize;
+            end
             blockX = blockSize(1);
             blockY = blockSize(2);
             imgSegments = cell(0, 1);
@@ -224,11 +240,18 @@ classdef Trainer < matlab.System
                 classImgsPaths = imagePaths2D{classIdx};
                 for classImgPathIdx = 1 : numel(classImgsPaths)
                     curImgPath = classImgsPaths{classImgPathIdx};
-                    enhancedBinImg = self.imenhance(curImgPath, noiseThreshold);
+                    if nargin < 4
+                        enhancedBinImg = self.imenhance(curImgPath);
+                    else
+                        enhancedBinImg = self.imenhance(curImgPath, noiseThreshold);
+                    end 
                     [imgObjs, imgObjsPositions] = self.extractObjects(enhancedBinImg);
                     rectPositions = vertcat(rectPositions, imgObjsPositions);
                     for objIdx = 1 : numel(imgObjs)
                         curObj = imgObjs{objIdx};
+                        if nargin < 5
+                            CellSize = self.defBlockSize;
+                        end
                         hogFeatures = extractHOGFeatures(curObj,'CellSize', CellSize);
                         if ~dataSet_Initialized %initialize for first time only
                             dataSet = zeros(0, numel(hogFeatures));
@@ -238,6 +261,38 @@ classdef Trainer < matlab.System
                         dataSetClasses{end+1,:} = dataClasses{classIdx};
                     end
                 end              
+            end
+        end
+        
+        function [dataSet, dataSetClasses, rectPositions] = TrainAsync(self, dataClasses, imagePaths2D, noiseThreshold, blockSize, isHOG)
+            switch nargin
+                case 5
+                    isHOG = 1;
+                case 4
+                    isHOG = 1;
+                    blockSize = self.defBlockSize;
+                case 3
+                    isHOG = 1;
+                    blockSize = self.defBlockSize;
+                    noiseThreshold = self.defNoiseThreshold;
+            end
+            if isHOG
+                parfor classIdx = 1:numel(dataClasses)
+                    [dataSetCell{classIdx,1}, dataSetClassesCell{classIdx,1}, rectPositionsCell{classIdx,1}] = self.TrainHOG({dataClasses{classIdx}}, {imagePaths2D{classIdx}}, noiseThreshold, blockSize);
+                end
+            else
+                parfor classIdx = 1:numel(dataClasses)
+                    [dataSetCell{classIdx,1}, dataSetClassesCell{classIdx,1}, rectPositionsCell{classIdx,1}] = self.Train({dataClasses{classIdx}}, {imagePaths2D{classIdx}}, noiseThreshold, blockSize);
+                end
+            end
+            %Copy cell arrays to standard arrays
+            dataSet = zeros(0, numel(dataSetCell{1,1}(1,:)));
+            dataSetClasses = cell(0, 1);
+            rectPositions = cell(0, 1);
+            parfor classIdx = 1:numel(dataClasses)
+                dataSet = vertcat(dataSet, dataSetCell{classIdx,1});
+                dataSetClasses = vertcat(dataSetClasses, dataSetClassesCell{classIdx,1});
+                rectPositions = vertcat(rectPositions, rectPositionsCell{classIdx,1});
             end
         end
     end

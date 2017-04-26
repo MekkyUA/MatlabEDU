@@ -8,13 +8,27 @@ classdef Classifier
     methods(Access = public)
 
         function [testObjects, testObjectsPositions] = getImgReady(self, ImgPath, noiseThreshold, blockSize)
+            switch nargin
+                case 3
+                    blockSize = self.tr.defBlockSize;
+                case 2
+                    blockSize = self.tr.defBlockSize;
+                    noiseThreshold = self.tr.defNoiseThreshold;
+            end
             [testObjects, ~, testObjectsPositions] = self.tr.Train({'Unknown'}, {{ImgPath}}, noiseThreshold, blockSize);
         end
         
         function [testObjects, testObjectsPositions] = getImgReadyHOG(self, ImgPath, noiseThreshold, CellSize)
+            switch nargin
+                case 3
+                    CellSize = self.tr.defBlockSize;
+                case 2
+                    CellSize = self.tr.defBlockSize;
+                    noiseThreshold = self.tr.defNoiseThreshold;
+            end
             [testObjects, ~, testObjectsPositions] = self.tr.TrainHOG({'Unknown'}, {{ImgPath}}, noiseThreshold, CellSize);
         end
-        
+                
         % k = 0 (means NN) , weights = 0 (means no weights)
         function [classType] = weightedKNN(~, data, dataClasses, testPattern, k, weights)
             [m,n] = size(data);  % get data matrix size
@@ -51,6 +65,12 @@ classdef Classifier
             [~, itemp] = max(n);
             classType = y(itemp);
             %classType = mode(kDistanceClasses);
+        end
+        
+        function [classesTypes] = weightedKNNAsync(self, data, dataClasses, testPatterns, k, weights)
+            parfor objIdx=1:numel(testPatterns(:,1))
+                classesTypes{objIdx,1} = self.weightedKNN(data, dataClasses, testPatterns(objIdx,:), k, weights);
+            end
         end
     end
 end
