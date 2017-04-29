@@ -3,6 +3,7 @@ classdef Classifier
     
     properties(Constant)
         tr = Trainer;
+        bh = BayesHelper;
     end
     
     methods(Access = public)
@@ -15,7 +16,10 @@ classdef Classifier
                     blockSize = self.tr.defBlockSize;
                     noiseThreshold = self.tr.defNoiseThreshold;
             end
-            [testObjects, ~, testObjectsPositions] = self.tr.Train({'Unknown'}, {{ImgPath}}, noiseThreshold, blockSize);
+            try
+                [testObjects, ~, testObjectsPositions] = self.tr.Train({'Unknown'}, {{ImgPath}}, noiseThreshold, blockSize);
+            catch
+            end
         end
         
         function [testObjects, testObjectsPositions] = getImgReadyHOG(self, ImgPath, noiseThreshold, CellSize)
@@ -26,9 +30,12 @@ classdef Classifier
                     CellSize = self.tr.defBlockSize;
                     noiseThreshold = self.tr.defNoiseThreshold;
             end
-            [testObjects, ~, testObjectsPositions] = self.tr.TrainHOG({'Unknown'}, {{ImgPath}}, noiseThreshold, CellSize);
+            try
+                [testObjects, ~, testObjectsPositions] = self.tr.TrainHOG({'Unknown'}, {{ImgPath}}, noiseThreshold, CellSize);
+            catch
+            end
         end
-                
+        
         % k = 0 (means NN) , weights = 0 (means no weights)
         function [classType] = weightedKNN(~, data, dataClasses, testPattern, k, weights)
             [m,n] = size(data);  % get data matrix size
@@ -70,6 +77,19 @@ classdef Classifier
         function [classesTypes] = weightedKNNAsync(self, data, dataClasses, testPatterns, k, weights)
             parfor objIdx=1:numel(testPatterns(:,1))
                 classesTypes{objIdx,1} = self.weightedKNN(data, dataClasses, testPatterns(objIdx,:), k, weights);
+            end
+        end
+        
+        function [classType] = bayesClassify(self, baySet, classes, classesProps, testPattern)
+            classType = self.bh.bayesClassify(baySet, classes, classesProps, testPattern);
+        end
+        
+        function [classesTypes] = bayesClassifyAsync(self, baySet, classes, classesProps, testPatterns, normX)
+            if nargin > 5
+                testPatterns = normX(testPatterns); %normalize dataset
+            end
+            parfor objIdx=1:numel(testPatterns(:,1))
+                classesTypes{objIdx,1} = self.bayesClassify(baySet, classes, classesProps, testPatterns(objIdx,:));
             end
         end
     end

@@ -40,7 +40,7 @@ classdef Trainer < matlab.System
                 %get colored pixels indexes column
                 coloredPixelsIdx = objects.PixelIdxList(1,obj);
                 %create a black image with the same enhancedBinaryImg size
-                objImg = zeros(size(enhancedBinaryImg));
+                objImg = false(objects.ImageSize);
                 %draw the white obj pixel by pixel
                 for i=1:numel(coloredPixelsIdx)
                     %color the specified pixel by index
@@ -85,10 +85,30 @@ classdef Trainer < matlab.System
             %Centroid = idxerMat(roundedX, roundedY);
         end
         
-        function Medoid = getMedoid(self, imgObject)
-            [~, medX] = self.extractMedoidRow(imgObject');
-            [~, medY] = self.extractMedoidRow(imgObject);
-            Medoid = [medX medY];
+        function Medoid = getMedoid(~, imgObject)
+            imgObject = double(imgObject);
+            % Get logical medoid matrix
+            logical_med = imgObject==median(imgObject(:));
+            % find medoids indexes [doubles]
+            med_indexes = find(logical_med);
+            if numel(med_indexes) == 0
+                logical_med = ~logical_med;
+                med_indexes = find(logical_med);
+            end
+            % find medoids indexes [(X,Y) pairs]
+            [X,Y] = find(logical_med);
+            % Get median value of med_indexes
+            med_val = med_indexes(round(numel(med_indexes)/2));
+            % Get median index of med_indexes
+            med_index = find(med_indexes==med_val);
+            medX = X(med_index);
+            medY = Y(med_index);
+            Medoid = [medX, medY];
+            
+            %[~, medX] = self.extractMedoidRow(imgObject');
+            %[~, medY] = self.extractMedoidRow(imgObject);
+            %Medoid = [medX medY];
+            
             %get medoid pixel index
             %[m,n] = size(imgObject);
             % create helper indexer matrix
@@ -146,8 +166,7 @@ classdef Trainer < matlab.System
                             featureVector = zeros(1, numOfFeatures);
                             % get all features & add to featureVector
                             featureVector(1,1:2) = self.getCentroid(curObjSegm);
-                            %featureVector(1,3:4) = self.getMedoid(curObjSegm);
-                            featureVector(1,3:4) = [0 0];
+                            featureVector(1,3:4) = self.getMedoid(curObjSegm);
                             featureVector(1,5) = self.getPerimeter(curObjSegm);
                             featureVector(1,6) = self.getArea(curObjSegm);
                             s = regionprops(curObjSegm,'Euler');
