@@ -5,6 +5,9 @@ classdef Classifier
         tr = Trainer;
         bh = BayesHelper;
     end
+    properties(Access = private)
+        svm = SVMHelper;
+    end
     
     methods(Access = public)
 
@@ -76,20 +79,42 @@ classdef Classifier
         
         function [classesTypes] = weightedKNNAsync(self, data, dataClasses, testPatterns, k, weights)
             parfor objIdx=1:numel(testPatterns(:,1))
-                classesTypes{objIdx,1} = self.weightedKNN(data, dataClasses, testPatterns(objIdx,:), k, weights);
+                classType = self.weightedKNN(data, dataClasses, testPatterns(objIdx,:), k, weights);
+                classesTypes{objIdx,1} = classType{1,1};
             end
         end
-        
-        function [classType] = bayesClassify(self, baySet, classes, classesProps, testPattern)
-            classType = self.bh.bayesClassify(baySet, classes, classesProps, testPattern);
-        end
-        
+                
         function [classesTypes] = bayesClassifyAsync(self, baySet, classes, classesProps, testPatterns, normX)
             if nargin > 5
                 testPatterns = normX(testPatterns); %normalize dataset
             end
             parfor objIdx=1:numel(testPatterns(:,1))
-                classesTypes{objIdx,1} = self.bayesClassify(baySet, classes, classesProps, testPatterns(objIdx,:));
+                classesTypes{objIdx,1} = self.bh.bayesClassify(baySet, classes, classesProps, testPatterns(objIdx,:));
+            end
+        end
+            
+        function [Model] = svmTrain(self, trainedSet, trainedSetClasses)
+            Sample=trainedSet;
+            class=zeros(size(trainedSetClasses));
+            %convert classes' names to doubles
+            parfor i = 1 : numel(trainedSetClasses)
+                class(i) = trainedSetClasses{i,1};
+            end
+            Model=self.svm.train(Sample,class);
+        end
+        
+        function [classType] = svmClassify(self, model, testPattern)
+            predicted=self.svm.predict(model, testPattern);
+            %convert double to class' name
+            classType = char(predicted);
+        end
+        
+        function [classesTypes] = svmClassifyAsync(self, model, testPatterns)
+            predicted=self.svm.predict(model, testPatterns);
+            classesTypes = cell(size(predicted));
+            %convert doubles to classes' names 
+            parfor i = 1 : numel(predicted)
+                classesTypes{i} = char(predicted(i));
             end
         end
     end

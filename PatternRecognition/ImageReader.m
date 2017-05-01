@@ -12,10 +12,10 @@ classdef ImageReader
             % Cell array of arrays to hold all images' paths foreach class
             imagePaths2D = cell(size(dataClasses));
             % For each class like (A,B,C,...)
-            for i=3:numel(DIRs) % 3 to skip . & .. roots
+            parfor i=3:numel(DIRs) % 3 to skip . & .. roots
                 % Get current class path
                 CLASSDIRPATH = strcat( DATASETPATH , '\' , DIRs(i).name );
-                dataClasses{i-2} = DIRs(i).name;
+                dataClasses{i-2} = strrep(DIRs(i).name,'_',''); %to eliminate '_'
                 Files = dir(CLASSDIRPATH);
                     imagePaths = cell(numel(Files)-2,1);
                     % for each image in this class
