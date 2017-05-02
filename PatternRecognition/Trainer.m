@@ -36,7 +36,7 @@ classdef Trainer < matlab.System
             %initialize imgObjects as cell array
             imgObjects = cell(objects.NumObjects, 1);
             rectPositions = cell(objects.NumObjects, 1);
-            for obj=1:objects.NumObjects
+            parfor obj=1:objects.NumObjects %  Taha -TM
                 %get colored pixels indexes column
                 coloredPixelsIdx = objects.PixelIdxList(1,obj);
                 %create a black image with the same enhancedBinaryImg size
